@@ -1,0 +1,36 @@
+version: '3.9'
+
+services:
+  backend:
+    build: ./backend
+    container_name: triagegate-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - DATABASE_URL=sqlite+aiosqlite:///./triagegate.db
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./backend/triagegate.db:/app/triagegate.db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build: ./frontend
+    container_name: triagegate-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+    restart: unless-stopped
+
+networks:
+  default:
+    name: triagegate-network
